@@ -1,0 +1,22 @@
+# 100-Bagger Screener Filters
+# Adjust these values as your experience evolves
+
+filters:
+  market_cap_min_cr: 1000       # Min market cap in crores
+  peg_max: 2.5                  # Max PEG ratio (must be positive)
+  peg_min: 0                    # Exclude negative earnings
+  roic_min: 15                  # Min Return on Invested Capital %
+  promoter_holding_min: 40      # Min promoter holding %
+
+screen:
+  result_limit: 50              # Max candidates to return per screen
+  sort_by: "Market Capitalization"
+  sort_order: "desc"
+
+interview:
+  model: "claude-sonnet-4-6"
+  max_tokens: 2048
+  wiki_dir: "Wiki"              # Relative to project root
+
+search:
+  max_results: 5                # Tavily results per query
