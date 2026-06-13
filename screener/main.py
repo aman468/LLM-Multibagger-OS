@@ -19,7 +19,7 @@ from .screen import run_screen, load_config
 from .interview import run_interview
 from .search import StockSearcher
 from .v3screen import run_v3_screen, display_v3_results
-from .loader import load_csv, display_watchlist, find_symbol_col
+from .loader import load_csv, display_watchlist, find_symbol_col, can_score_v3, score_and_sort
 
 console = Console()
 
@@ -180,9 +180,17 @@ def load(csv_file, config):
         console.print("[yellow]CSV is empty.[/yellow]")
         return
 
-    display_watchlist(rows)
-
     headers = list(rows[0].keys())
+
+    # Score and rank if the CSV has enough analytical columns
+    scored: list | None = None
+    if can_score_v3(headers):
+        console.print("[dim]Scoring companies on v3.0 framework...[/dim]")
+        scored = score_and_sort(rows)
+        display_watchlist(rows, scored=scored)
+    else:
+        display_watchlist(rows)
+
     sym_col = find_symbol_col(headers)
     name_col = next((h for h in headers if "name" in h.lower()), headers[0])
 
@@ -197,20 +205,24 @@ def load(csv_file, config):
     tavily_key = os.getenv("TAVILY_API_KEY")
     searcher = StockSearcher(tavily_key, max_results=cfg.get("search", {}).get("max_results", 5)) if tavily_key else None
 
+    display_count = len(scored) if scored else len(rows)
+
     while True:
         try:
-            raw = input(f"Interview # (1–{len(rows)}, Enter to quit): ").strip()
+            raw = input(f"Interview # (1–{display_count}, Enter to quit): ").strip()
         except (EOFError, KeyboardInterrupt):
             break
 
         if not raw:
             break
 
-        # Resolve selection to a row
+        # Resolve selection to a row (scored list is already sorted; use its order)
         selected_row: dict | None = None
         if raw.isdigit():
             idx = int(raw) - 1
-            if 0 <= idx < len(rows):
+            if scored and 0 <= idx < len(scored):
+                selected_row = scored[idx][1]  # normalized row from (pts, row, detail)
+            elif not scored and 0 <= idx < len(rows):
                 selected_row = rows[idx]
         if selected_row is None:
             console.print(f"[red]Invalid selection.[/red]")
@@ -256,7 +268,7 @@ def load(csv_file, config):
             max_tokens=max_tokens,
         )
 
-        display_watchlist(rows)
+        display_watchlist(rows, scored=scored)
 
 
 if __name__ == "__main__":
